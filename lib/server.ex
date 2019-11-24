@@ -7,6 +7,9 @@ defmodule Twitter.Server do
 
   def init([]) do
     :ets.new(:registered_users, [:set, :private, :named_table])
+    :ets.new(:tweets, [:bag, :private, :named_table])
+    :ets.new(:hashtags, [:bag, :private, :named_table])
+    :ets.new(:mentions, [:bag, :private, :named_table])
     {:ok, %{}}
   end
 
@@ -26,5 +29,34 @@ defmodule Twitter.Server do
       :ets.delete(:registered_users, userId)
     end
     {:reply, state, state}
+  end
+
+  def handle_cast({:tweet_post, userId, tweet}, state) do
+    time = System.monotonic_time()
+    :ets.insert(:tweets, {userId, tweet, time})
+    find_hashtags(tweet) |> insert_hashtags(userId, tweet)
+    find_mentions(tweet) |> insert_mentions(userId, tweet)
+    :ets.lookup(:hashtags, "#ToTheStars") |> IO.inspect()
+    {:noreply, state}
+  end
+
+  defp find_hashtags(tweet) do
+    Regex.scan(~r/(#[?<hashtag>\w]+)/, tweet)
+  end
+
+  defp find_mentions(tweet) do
+    Regex.scan(~r/@([?<hashtag>\w]+)/, tweet)
+  end
+
+  defp insert_hashtags(hashtags, userId, tweet) do
+    hashtags |> Enum.each(fn [_, capture] ->
+      :ets.insert(:hashtags, {capture, userId, tweet})
+    end)
+  end
+
+  defp insert_mentions(mentions, userId, tweet) do
+    mentions |> Enum.each(fn [_, capture] ->
+      :ets.insert(:mentions, {capture, userId, tweet})
+    end)
   end
 end

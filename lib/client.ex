@@ -18,4 +18,9 @@ defmodule Twitter.Client do
     GenServer.call(TwitterServer, {:delete_user, state.userId})
     {:noreply, state}
   end
+
+  def handle_cast({:tweet, tweet}, state) do
+    GenServer.cast(TwitterServer, {:tweet_post, state.userId, tweet})
+    {:noreply, state}
+  end
 end
