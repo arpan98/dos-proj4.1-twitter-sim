@@ -10,6 +10,8 @@ defmodule Twitter.Server do
     :ets.new(:tweets, [:bag, :private, :named_table])
     :ets.new(:hashtags, [:bag, :private, :named_table])
     :ets.new(:mentions, [:bag, :private, :named_table])
+    :ets.new(:subscribers, [:bag, :private, :named_table])
+    :ets.new(:subscribed_to, [:bag, :private, :named_table])
     {:ok, %{}}
   end
 
@@ -35,9 +37,25 @@ defmodule Twitter.Server do
     time = System.monotonic_time()
     :ets.insert(:tweets, {userId, tweet, time})
     find_hashtags(tweet) |> insert_hashtags(userId, tweet)
-    find_mentions(tweet) |> insert_mentions(userId, tweet)
-    :ets.lookup(:hashtags, "#ToTheStars") |> IO.inspect()
+    find_mentions(tweet) |> handle_mentions(userId, tweet)
+    :ets.lookup(:mentions, 1) |> IO.inspect()
     {:noreply, state}
+  end
+
+  def handle_cast({:subscribe, userId, otherId}, state) do
+    IO.inspect([userId, otherId])
+    if userId != otherId do
+      :ets.insert(:subscribers, {otherId, userId})
+      :ets.insert(:subscribed_to, {userId, otherId})
+    end
+    {:noreply, state}
+  end
+
+  def handle_call({:get_subscribed_tweets, userId}, _from, state) do
+    IO.inspect([userId, " is subscribed to "])
+    :ets.lookup(:subscribed_to, userId) |> Enum.map(fn {_, otherId} -> otherId end) |> IO.inspect
+    |> Enum.map(fn otherId -> :ets.lookup(:tweets, otherId) |> IO.inspect() end)
+    {:reply, state, state}
   end
 
   defp find_hashtags(tweet) do
@@ -56,7 +74,16 @@ defmodule Twitter.Server do
 
   defp insert_mentions(mentions, userId, tweet) do
     mentions |> Enum.each(fn [_, capture] ->
-      :ets.insert(:mentions, {capture, userId, tweet})
+      :ets.insert(:mentions, {String.to_integer(capture), userId, tweet})
     end)
+  end
+
+  defp send_tweet_to_mentioned(mentions) do
+    :ok
+  end
+
+  defp handle_mentions(mentions, userId, tweet) do
+    insert_mentions(mentions, userId, tweet)
+    send_tweet_to_mentioned(mentions)
   end
 end

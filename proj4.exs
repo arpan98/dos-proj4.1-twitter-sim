@@ -14,9 +14,16 @@ defmodule Proj4 do
     users = Twitter.startClients(num_users)
     Twitter.registerClients(users)
     Twitter.deregisterClients(users)
-    {_, random_pid} = users |> Enum.random()
     sample_tweet = "@1 hi bro #ToTheStars"
-    GenServer.cast(random_pid, {:tweet, sample_tweet})
+    sample_tweet2 = "Hi @4 #sup #pride"
+    Enum.each(users, fn {_, pid} ->
+      GenServer.cast(pid, {:tweet, sample_tweet})
+      GenServer.cast(pid, {:tweet, sample_tweet2})
+    end)
+    {_, random_pid} = users |> Enum.random()
+    {random_other_id, _} = users |> Enum.random()
+    GenServer.cast(random_pid, {:subscribe, random_other_id})
+    GenServer.cast(random_pid, :get_subscribed_tweets)
     loop()
   end
 

@@ -23,4 +23,13 @@ defmodule Twitter.Client do
     GenServer.cast(TwitterServer, {:tweet_post, state.userId, tweet})
     {:noreply, state}
   end
+
+  def handle_cast({:subscribe, otherId}, state) do
+    GenServer.cast(TwitterServer, {:subscribe, state.userId, otherId})
+    {:noreply, state}
+  end
+
+  def handle_cast(:get_subscribed_tweets, state) do
+    GenServer.call(TwitterServer, {:get_subscribed_tweets, state.userId}) |> IO.inspect()
+  end
 end
