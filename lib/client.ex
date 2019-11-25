@@ -19,6 +19,16 @@ defmodule Twitter.Client do
     {:noreply, state}
   end
 
+  def handle_cast(:login, state) do
+    GenServer.call(TwitterServer, {:login_user, state.userId})
+    {:noreply, state}
+  end
+
+  def handle_cast(:logout, state) do
+    GenServer.call(TwitterServer, {:logout_user, state.userId})
+    {:noreply, state}
+  end
+
   def handle_cast({:tweet, tweet}, state) do
     GenServer.cast(TwitterServer, {:tweet_post, state.userId, tweet})
     {:noreply, state}

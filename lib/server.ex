@@ -19,7 +19,7 @@ defmodule Twitter.Server do
   # Register user
   def handle_call({:register_user, userId}, from, state) do
     {userPid, _} = from
-    :ets.insert(:registered_users, {userId, userPid, true})
+    :ets.insert(:registered_users, {userId, userPid, true}) # Connected default true when registering
     IO.inspect(["Registered user", userId, userPid])
     {:reply, state, state}
   end
@@ -30,6 +30,26 @@ defmodule Twitter.Server do
     {fromPid, _} = from
     if fromPid == registeredPid do
       :ets.delete(:registered_users, userId)
+    end
+    {:reply, state, state}
+  end
+
+  def handle_call({:login_user, userId}, _, state) do
+    case :ets.lookup(:registered_users, userId) do
+      [user | _] -> 
+        {_, userPid, _} = user
+        :ets.insert(:registered_users, {userId, userPid, true})
+      [] -> :nothing
+    end
+    {:reply, state, state}
+  end
+
+  def handle_call({:logout_user, userId}, _, state) do
+    case :ets.lookup(:registered_users, userId) do
+      [user | _] -> 
+        {_, userPid, _} = user
+        :ets.insert(:registered_users, {userId, userPid, false})
+      [] -> :nothing
     end
     {:reply, state, state}
   end
