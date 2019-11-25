@@ -12,6 +12,7 @@ defmodule Twitter.Server do
     :ets.new(:mentions, [:bag, :private, :named_table])
     :ets.new(:subscribers, [:bag, :private, :named_table])
     :ets.new(:subscribed_to, [:bag, :private, :named_table])
+    :ets.new(:retweets, [:bag, :private, :named_table])
     {:ok, %{}}
   end
 
@@ -35,10 +36,10 @@ defmodule Twitter.Server do
 
   def handle_cast({:tweet_post, userId, tweet}, state) do
     time = System.monotonic_time()
+    IO.puts("User #{userId} tweeted '#{tweet}'")
     :ets.insert(:tweets, {userId, tweet, time})
     find_hashtags(tweet) |> insert_hashtags(userId, tweet)
     find_mentions(tweet) |> handle_mentions(userId, tweet)
-    :ets.lookup(:mentions, 1) |> IO.inspect()
     {:noreply, state}
   end
 
@@ -53,9 +54,33 @@ defmodule Twitter.Server do
 
   def handle_call({:get_subscribed_tweets, userId}, _from, state) do
     IO.inspect([userId, " is subscribed to "])
-    :ets.lookup(:subscribed_to, userId) |> Enum.map(fn {_, otherId} -> otherId end) |> IO.inspect
-    |> Enum.map(fn otherId -> :ets.lookup(:tweets, otherId) |> IO.inspect() end)
+    ret = :ets.lookup(:subscribed_to, userId) |> Enum.map(fn {_, otherId} -> :ets.lookup(:tweets, otherId) end)
+    {:reply, ret, state}
+  end
+
+  def handle_call({:retweet_post, userId, ownerId, tweet}, _from, state) do
+    time = System.monotonic_time()
+    IO.puts("User #{userId} retweeted Owner #{ownerId} - '#{tweet}'")
+    :ets.insert(:retweets, {userId, ownerId, tweet, time})
     {:reply, state, state}
+  end
+
+  def handle_call({:get_hashtag_tweets, hashtag}, _from, state) do
+    IO.puts("Query for #{hashtag}")
+    ret = :ets.lookup(:hashtags, hashtag) |> Enum.map(fn {_, ownerId, tweet} ->
+      :ets.lookup(:tweets, ownerId) |> Enum.find(fn {_, usertweet, _} -> usertweet == tweet end)
+    end)
+    IO.inspect(ret)
+    {:reply, ret, state}
+  end
+
+  def handle_call({:get_mentioned_tweets, userId}, _from, state) do
+    IO.puts("Query for @#{userId}")
+    ret = :ets.lookup(:mentions, userId) |> Enum.map(fn {_, ownerId, tweet} ->
+      :ets.lookup(:tweets, ownerId) |> Enum.find(fn {_, usertweet, _} -> usertweet == tweet end)
+    end)
+    IO.inspect(ret)
+    {:reply, ret, state}
   end
 
   defp find_hashtags(tweet) do
