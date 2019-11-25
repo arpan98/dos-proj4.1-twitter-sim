@@ -48,4 +48,18 @@ defmodule Twitter.Client do
     ret = GenServer.call(TwitterServer, {:get_mentioned_tweets, state.userId})
     {:reply, ret, state}
   end
+
+  def handle_cast({:receive_tweet, userId, tweet, source}, state) do
+    case source do
+      :subscribe -> IO.puts("Subscriptions - #{state.userId} received tweet from #{userId} - #{tweet}")
+      :mention -> IO.puts("#{userId} mentioned you(#{state.userId}) in their tweet - #{tweet}")
+      _ -> IO.puts("#{state.userId} received tweet from #{userId} - #{tweet}")
+    end
+    {:noreply, state}
+  end
+
+  def handle_cast({:receive_retweet, userId, ownerId, tweet}, state) do
+    IO.puts("#{state.userId} received retweet. #{userId} retweeted #{ownerId} - #{tweet}")
+    {:noreply, state}
+  end
 end

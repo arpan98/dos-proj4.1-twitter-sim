@@ -19,14 +19,14 @@ defmodule Twitter.Server do
   # Register user
   def handle_call({:register_user, userId}, from, state) do
     {userPid, _} = from
-    :ets.insert(:registered_users, {userId, userPid})
+    :ets.insert(:registered_users, {userId, userPid, true})
     IO.inspect(["Registered user", userId, userPid])
     {:reply, state, state}
   end
 
   # Deregister user
   def handle_call({:delete_user, userId}, from, state) do
-    {_, registeredPid} = :ets.lookup(:registered_users, userId) |> Enum.at(0)
+    {_, registeredPid, _} = :ets.lookup(:registered_users, userId) |> Enum.at(0)
     {fromPid, _} = from
     if fromPid == registeredPid do
       :ets.delete(:registered_users, userId)
@@ -38,14 +38,15 @@ defmodule Twitter.Server do
     time = System.monotonic_time()
     IO.puts("User #{userId} tweeted '#{tweet}'")
     :ets.insert(:tweets, {userId, tweet, time})
+    tweet_to_subscribers(userId, tweet)
     find_hashtags(tweet) |> insert_hashtags(userId, tweet)
     find_mentions(tweet) |> handle_mentions(userId, tweet)
     {:noreply, state}
   end
 
   def handle_cast({:subscribe, userId, otherId}, state) do
-    IO.inspect([userId, otherId])
     if userId != otherId do
+      IO.inspect([userId, "subscribed to", otherId])
       :ets.insert(:subscribers, {otherId, userId})
       :ets.insert(:subscribed_to, {userId, otherId})
     end
@@ -53,7 +54,7 @@ defmodule Twitter.Server do
   end
 
   def handle_call({:get_subscribed_tweets, userId}, _from, state) do
-    IO.inspect([userId, " is subscribed to "])
+    # IO.inspect([userId, " is subscribed to "])
     ret = :ets.lookup(:subscribed_to, userId) |> Enum.map(fn {_, otherId} -> :ets.lookup(:tweets, otherId) end)
     {:reply, ret, state}
   end
@@ -62,6 +63,7 @@ defmodule Twitter.Server do
     time = System.monotonic_time()
     IO.puts("User #{userId} retweeted Owner #{ownerId} - '#{tweet}'")
     :ets.insert(:retweets, {userId, ownerId, tweet, time})
+    retweet_to_subscribers(userId, ownerId, tweet)
     {:reply, state, state}
   end
 
@@ -97,18 +99,44 @@ defmodule Twitter.Server do
     end)
   end
 
+  defp handle_mentions(mentions, userId, tweet) do
+    insert_mentions(mentions, userId, tweet)
+    tweet_to_mentioned(mentions, userId, tweet)
+  end
+
   defp insert_mentions(mentions, userId, tweet) do
     mentions |> Enum.each(fn [_, capture] ->
       :ets.insert(:mentions, {String.to_integer(capture), userId, tweet})
     end)
   end
 
-  defp send_tweet_to_mentioned(mentions) do
-    :ok
+  defp tweet_to_mentioned(mentions, userId, tweet) do
+    Enum.each(mentions, fn [_, idString] ->
+      {_, otherPid, connected} = :ets.lookup(:registered_users, String.to_integer(idString)) |> Enum.at(0)
+      case connected do
+        true -> GenServer.cast(otherPid, {:receive_tweet, userId, tweet, :mention})
+        false -> :nothing  
+      end
+    end)
   end
 
-  defp handle_mentions(mentions, userId, tweet) do
-    insert_mentions(mentions, userId, tweet)
-    send_tweet_to_mentioned(mentions)
+  defp tweet_to_subscribers(userId, tweet) do
+    :ets.lookup(:subscribers, userId) |> Enum.each(fn {_, otherId} ->
+      {_, otherPid, connected} = :ets.lookup(:registered_users, otherId) |> Enum.at(0)
+      case connected do
+        true -> GenServer.cast(otherPid, {:receive_tweet, userId, tweet, :subscribe})
+        false -> :nothing
+      end
+    end)
+  end
+
+  defp retweet_to_subscribers(userId, ownerId, tweet) do
+    :ets.lookup(:subscribers, userId) |> Enum.each(fn {_, otherId} ->
+      {_, otherPid, connected} = :ets.lookup(:registered_users, otherId) |> Enum.at(0)
+      case connected do
+        true -> GenServer.cast(otherPid, {:receive_retweet, userId, ownerId, tweet})
+        false -> :nothing  
+      end
+    end)
   end
 end
