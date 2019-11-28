@@ -38,6 +38,19 @@ defmodule Twitter do
     end)
   end
 
+  def setSubscribers(users, num_users) do
+    Enum.each(users, fn {id, pid} ->
+      newusers = users
+      numSubscribers = (num_users-1)/2 |> Kernel.trunc() |> :rand.uniform()
+      subscribers = Enum.take_random(users -- [{id, pid}], numSubscribers)
+      IO.puts("#{id} has #{numSubscribers} subscribers")
+      Enum.each(subscribers, fn {sid, spid} ->
+        GenServer.cast(pid, {:subscribe, sid})
+        # Twitter.Client.addSubscribedTo(sid, id)
+      end)
+    end)
+  end
+
   defp generateRandomTweet(userId, num_users) do
     hashtags = getRandomHashtags()
     # IO.inspect(["hashtags", hashtags])

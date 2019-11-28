@@ -9,23 +9,27 @@ defmodule Twitter.Client do
     {:ok, %{userId: userId}}
   end
 
+  def addSubscribedTo(userId, otherId) do
+    GenServer.cast(TwitterServer, {:subscribe, userId, otherId})
+  end
+
   def handle_cast(:register, state) do
-    GenServer.call(TwitterServer, {:register_user, state.userId})
+    GenServer.call(TwitterServer, {:register_user, state.userId, self()}, :infinity)
     {:noreply, state}
   end
 
   def handle_cast(:delete, state) do
-    GenServer.call(TwitterServer, {:delete_user, state.userId})
+    GenServer.call(TwitterServer, {:delete_user, state.userId}, :infinity)
     {:noreply, state}
   end
 
   def handle_cast(:login, state) do
-    GenServer.call(TwitterServer, {:login_user, state.userId})
+    GenServer.call(TwitterServer, {:login_user, state.userId}, :infinity)
     {:noreply, state}
   end
 
   def handle_cast(:logout, state) do
-    GenServer.call(TwitterServer, {:logout_user, state.userId})
+    GenServer.call(TwitterServer, {:logout_user, state.userId}, :infinity)
     {:noreply, state}
   end
 
@@ -35,7 +39,7 @@ defmodule Twitter.Client do
   end
 
   def handle_cast({:retweet, ownerId, tweet}, state) do
-    GenServer.call(TwitterServer, {:retweet_post, state.userId, ownerId, tweet})
+    GenServer.call(TwitterServer, {:retweet_post, state.userId, ownerId, tweet}, :infinity)
     {:noreply, state}
   end
 
@@ -45,25 +49,29 @@ defmodule Twitter.Client do
   end
 
   def handle_call(:get_subscribed_tweets, _from, state) do
-    ret = GenServer.call(TwitterServer, {:get_subscribed_tweets, state.userId})
+    ret = GenServer.call(TwitterServer, {:get_subscribed_tweets, state.userId}, :infinity)
     {:reply, ret, state}
   end
 
   def handle_call({:get_hashtag_tweets, hashtag}, _from, state) do
-    ret = GenServer.call(TwitterServer, {:get_hashtag_tweets, hashtag})
+    ret = GenServer.call(TwitterServer, {:get_hashtag_tweets, hashtag}, :infinity)
     {:reply, ret, state}
   end
 
   def handle_call(:get_mentioned_tweets, _from, state) do
-    ret = GenServer.call(TwitterServer, {:get_mentioned_tweets, state.userId})
+    ret = GenServer.call(TwitterServer, {:get_mentioned_tweets, state.userId}, :infinity)
     {:reply, ret, state}
   end
 
   def handle_cast({:receive_tweet, userId, tweet, source}, state) do
-    case source do
-      :subscribe -> IO.puts("Subscriptions - #{state.userId} received tweet from #{userId} - #{tweet}")
-      :mention -> IO.puts("#{userId} mentioned you(#{state.userId}) in their tweet - #{tweet}")
-      _ -> IO.puts("#{state.userId} received tweet from #{userId} - #{tweet}")
+    # case source do
+    #   :subscribe -> IO.puts("Subscriptions - #{state.userId} received tweet from #{userId} - #{tweet}")
+    #   :mention -> IO.puts("#{userId} mentioned you(#{state.userId}) in their tweet - #{tweet}")
+    #   _ -> IO.puts("#{state.userId} received tweet from #{userId} - #{tweet}")
+    # end
+    case probability_roll(0.2) do
+      true -> GenServer.call(TwitterServer, {:retweet_post, state.userId, userId, tweet}, :infinity)
+      false -> :nothing
     end
     {:noreply, state}
   end
@@ -71,5 +79,10 @@ defmodule Twitter.Client do
   def handle_cast({:receive_retweet, userId, ownerId, tweet}, state) do
     IO.puts("#{state.userId} received retweet. #{userId} retweeted #{ownerId} - #{tweet}")
     {:noreply, state}
+  end
+
+  defp probability_roll(p) do
+    roll = :rand.uniform()
+    if roll <= p, do: true, else: false
   end
 end
