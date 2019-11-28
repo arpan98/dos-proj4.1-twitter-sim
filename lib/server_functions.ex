@@ -59,7 +59,7 @@ defmodule ServerFunctions do
 
   def retweet(userId, ownerId, tweet, live \\ true) do
     time = System.monotonic_time()
-    IO.puts("User #{userId} retweeted Owner #{ownerId} - '#{tweet}'")
+    # IO.puts("User #{userId} retweeted Owner #{ownerId} - '#{tweet}'")
     :ets.insert(:retweets, {userId, ownerId, tweet, time})
     case live do
       true -> retweet_to_subscribers(userId, ownerId, tweet)

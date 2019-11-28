@@ -30,7 +30,7 @@ defmodule Twitter do
 
   def sendTweets(users, num_users, num_msgs) do
     Enum.each(users, fn {id, pid} ->
-      Enum.each(1..10, fn i ->
+      Enum.each(1..num_msgs, fn i ->
         tweet = generateRandomTweet(id, num_users)
         GenServer.cast(pid, {:tweet, tweet})
       end)
@@ -41,7 +41,7 @@ defmodule Twitter do
     Enum.each(users, fn {id, pid} ->
       numSubscribers = (num_users-1)/2 |> Kernel.trunc() |> :rand.uniform()
       subscribers = Enum.take_random(users -- [{id, pid}], numSubscribers)
-      IO.puts("#{id} has #{numSubscribers} subscribers")
+      # IO.puts("#{id} has #{numSubscribers} subscribers")
       spawnWorkers(8, pid, subscribers)
     end)
   end

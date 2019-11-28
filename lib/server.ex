@@ -54,22 +54,18 @@ defmodule Twitter.Server do
     {:reply, ret, state}
   end
 
-  def handle_call({:retweet_post, userId, ownerId, tweet}, _from, state) do
+  def handle_cast({:retweet_post, userId, ownerId, tweet}, state) do
     ServerFunctions.retweet(userId, ownerId, tweet)
-    {:reply, state, state}
+    {:noreply, state}
   end
 
   def handle_call({:get_hashtag_tweets, hashtag}, _from, state) do
-    IO.puts("Query for #{hashtag}")
     ret = ServerFunctions.get_hashtag_tweets(hashtag)
-    IO.inspect(ret)
     {:reply, ret, state}
   end
 
   def handle_call({:get_mentioned_tweets, userId}, _from, state) do
-    IO.puts("Query for @#{userId}")
     ret = ServerFunctions.get_mentioned_tweets(userId)
-    IO.inspect(ret)
     {:reply, ret, state}
   end
 end

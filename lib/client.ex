@@ -54,12 +54,26 @@ defmodule Twitter.Client do
   end
 
   def handle_call({:get_hashtag_tweets, hashtag}, _from, state) do
+    IO.puts("\nQuery for #{hashtag}")
     ret = GenServer.call(TwitterServer, {:get_hashtag_tweets, hashtag}, :infinity)
+    IO.puts("Got #{Enum.count(ret)} tweets")
+    Enum.each(Enum.take(ret, 10), fn {userId, tweet, _} ->
+      IO.puts("User: #{userId} - #{tweet}")
+    end)
+    IO.puts("...")
     {:reply, ret, state}
   end
 
   def handle_call(:get_mentioned_tweets, _from, state) do
+    IO.puts("\nQuery for @#{state.userId}")
     ret = GenServer.call(TwitterServer, {:get_mentioned_tweets, state.userId}, :infinity)
+    IO.puts("Got #{Enum.count(ret)} tweets")
+    Enum.each(Enum.take(ret, 10), fn {userId, tweet, _} ->
+      IO.puts("User: #{userId} - #{tweet}")
+    end)
+    if Enum.count(ret) > 10 do
+      IO.puts("...")
+    end
     {:reply, ret, state}
   end
 
@@ -69,15 +83,15 @@ defmodule Twitter.Client do
     #   :mention -> IO.puts("#{userId} mentioned you(#{state.userId}) in their tweet - #{tweet}")
     #   _ -> IO.puts("#{state.userId} received tweet from #{userId} - #{tweet}")
     # end
-    case probability_roll(0.5) do
-      true -> GenServer.call(TwitterServer, {:retweet_post, state.userId, userId, tweet}, :infinity)
-      false -> :nothing
-    end
+    # case probability_roll(0.5) do
+    #   true -> GenServer.cast(TwitterServer, {:retweet_post, state.userId, userId, tweet})
+    #   false -> :nothing
+    # end
     {:noreply, state}
   end
 
   def handle_cast({:receive_retweet, userId, ownerId, tweet}, state) do
-    IO.puts("#{state.userId} received retweet. #{userId} retweeted #{ownerId} - #{tweet}")
+    # IO.puts("#{state.userId} received retweet. #{userId} retweeted #{ownerId} - #{tweet}")
     {:noreply, state}
   end
 
