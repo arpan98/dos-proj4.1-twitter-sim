@@ -1,7 +1,6 @@
 defmodule Twitter do
   def startServer() do
     GenServer.start_link(Twitter.Server, [], name: TwitterServer)
-    GenServer.call(TwitterServer, {:register_user, 0})
   end
 
   def startClients(num_users) do
@@ -40,14 +39,25 @@ defmodule Twitter do
 
   def setSubscribers(users, num_users) do
     Enum.each(users, fn {id, pid} ->
-      newusers = users
       numSubscribers = (num_users-1)/2 |> Kernel.trunc() |> :rand.uniform()
       subscribers = Enum.take_random(users -- [{id, pid}], numSubscribers)
       IO.puts("#{id} has #{numSubscribers} subscribers")
-      Enum.each(subscribers, fn {sid, spid} ->
-        GenServer.cast(pid, {:subscribe, sid})
-        # Twitter.Client.addSubscribedTo(sid, id)
-      end)
+      spawnWorkers(8, pid, subscribers)
+    end)
+  end
+
+  defp spawnWorkers(num_processes, pid, subscribers) do
+    step = ceil(Enum.count(subscribers) / num_processes)
+    chunks = Enum.chunk_every(subscribers, step)
+    Enum.zip(1..num_processes, chunks) |>
+    Enum.each(fn {i, chunk} ->
+      spawn(fn -> _setSubs(chunk, pid) end)
+    end)
+  end
+
+  defp _setSubs(subscribers, pid) do
+    Enum.each(subscribers, fn {sid, spid} ->
+      GenServer.cast(pid, {:subscribe, sid})
     end)
   end
 

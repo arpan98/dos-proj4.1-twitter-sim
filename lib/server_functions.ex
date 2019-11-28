@@ -95,7 +95,6 @@ defmodule ServerFunctions do
 
   defp insert_mentions(mentions, userId, tweet) do
     mentions |> Enum.each(fn [_, capture] ->
-      IO.inspect(capture)
       :ets.insert(:mentions, {String.to_integer(capture), userId, tweet})
     end)
   end
@@ -122,7 +121,6 @@ defmodule ServerFunctions do
 
   defp retweet_to_subscribers(userId, ownerId, tweet) do
     :ets.lookup(:subscribers, userId) |> Enum.each(fn {_, otherId} ->
-      IO.inspect(:ets.lookup(:registered_users, otherId))
       {_, otherPid, connected} = :ets.lookup(:registered_users, otherId) |> Enum.at(0)
       case connected do
         true -> GenServer.cast(otherPid, {:receive_retweet, userId, ownerId, tweet})

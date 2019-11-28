@@ -69,7 +69,7 @@ defmodule Twitter.Client do
     #   :mention -> IO.puts("#{userId} mentioned you(#{state.userId}) in their tweet - #{tweet}")
     #   _ -> IO.puts("#{state.userId} received tweet from #{userId} - #{tweet}")
     # end
-    case probability_roll(0.2) do
+    case probability_roll(0.5) do
       true -> GenServer.call(TwitterServer, {:retweet_post, state.userId, userId, tweet}, :infinity)
       false -> :nothing
     end
